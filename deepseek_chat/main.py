@@ -10,6 +10,8 @@ from datetime import datetime
 from common.api import DeepSeekAPI
 from common.config import DEEPSEEK_API_KEY
 from .session_store import SessionStore
+from pathlib import Path
+from fastapi.responses import HTMLResponse
 
 app = FastAPIOffline()
 
@@ -218,3 +220,19 @@ async def chat_completions(request: ChatRequest):
         session_store.update(sid, updates)
 
     return {"content": full_text, "reasoning_content": full_thinking}
+
+
+
+# مسیر فایل panel.html که کنار main.py هست
+PANEL_PATH = Path(__file__).parent / "panel.html"
+
+@app.get("/", response_class=HTMLResponse)
+async def get_panel():
+    """بازگرداندن پنل مدیریت نشست"""
+    if PANEL_PATH.exists():
+        return PANEL_PATH.read_text(encoding="utf-8")
+    return HTMLResponse("<h1>panel.html پیدا نشد</h1>", status_code=404)
+
+# Mount UI static files (optional, for future assets)
+if os.path.isdir("ui"):
+    app.mount("/ui", StaticFiles(directory="ui"), name="ui")

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت جلسات DeepSeek</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --border: #2a2e3d;
+            --text: #e4e6ed;
+            --text-secondary: #9ca0b0;
+            --accent: #6c5ce7;
+            --accent-hover: #7d6ff0;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --radius: 12px;
+            --font: 'Segoe UI', Tahoma, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--text);
+            direction: rtl;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            padding: 32px 20px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: var(--font);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+        .btn.danger {
+            background: transparent;
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+        .btn.danger:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn.small {
+            padding: 4px 12px;
+            font-size: 11px;
+            border-radius: 14px;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: right;
+            border-bottom: 1px solid var(--border);
+            font-size: 13px;
+        }
+        th {
+            background: #1e2130;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: rgba(108, 92, 231, 0.05);
+        }
+        .truncate {
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            direction: ltr;
+            text-align: left;
+            display: inline-block;
+        }
+        .preview-cell {
+            max-width: 250px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: var(--text-secondary);
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge.on {
+            background: var(--accent);
+            color: #fff;
+        }
+        .badge.off {
+            background: #2d3148;
+            color: var(--text-secondary);
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #3a3f52;
+            transition: 0.2s;
+            border-radius: 22px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+        .actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+        .empty-state p {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .toast {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #fff;
+            animation: slideDown 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+        .toast.error { background: var(--danger); }
+        .toast.success { background: var(--success); }
+        .toast.info { background: var(--accent); }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 768px) {
+            .container { padding: 16px 10px; }
+            th, td { padding: 8px 6px; font-size: 11px; }
+            .truncate { max-width: 100px; }
+            .preview-cell { max-width: 120px; }
+            .header h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>⚙️</span> مدیریت جلسات DeepSeek
+            </h1>
+            <button class="btn" onclick="loadSessions()" id="refreshBtn">
+                🔄 بروزرسانی
+            </button>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Chat ID</th>
+                        <th>پیش‌نمایش آخرین پیام</th>
+                        <th>تفکر</th>
+                        <th>جستجو</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td colspan="6" class="loading">⏳ در حال بارگذاری...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        async function loadSessions() {
+            const tbody = document.getElementById('tableBody');
+            const refreshBtn = document.getElementById('refreshBtn');
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '⏳ ...';
+
+            try {
+                const res = await fetch(`/v1/sessions`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const sessions = await res.json();
+
+                if (sessions.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+                        <p>📭 هیچ جلسه‌ای وجود ندارد</p>
+                    </td></tr>`;
+                } else {
+                    tbody.innerHTML = sessions.map(s => `
+                        <tr>
+                            <td><span class="truncate" title="${escapeHtml(s.session_id)}">${escapeHtml(s.session_id)}</span></td>
+                            <td><span class="truncate" title="${escapeHtml(s.chat_id)}">${escapeHtml(s.chat_id.substring(0, 25))}...</span></td>
+                            <td class="preview-cell" title="${escapeHtml(s.last_message_preview || '')}">${escapeHtml(s.last_message_preview || '—')}</td>
+                            <td>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" ${s.thinking_enabled ? 'checked' : ''}
+                                           onchange="toggleSetting('${s.session_id}', 'thinking_enabled', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" ${s.search_enabled ? 'checked' : ''}
+                                           onchange="toggleSetting('${s.session_id}', 'search_enabled', this.checked)">
+                                    <span class="slider"></span>
+                                </label>
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <button class="btn danger small" onclick="deleteSession('${s.session_id}')">🗑 حذف</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (e) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">
+                    <p>❌ خطا در بارگذاری: ${escapeHtml(e.message)}</p>
+                </td></tr>`;
+                showToast('خطا در دریافت جلسات: ' + e.message, 'error');
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '🔄 بروزرسانی';
+            }
+        }
+
+        async function toggleSetting(sessionId, key, value) {
+            try {
+                const body = {};
+                body[key] = value;
+                const res = await fetch(`/v1/sessions/${sessionId}/settings`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                showToast(`تنظیمات ${key === 'thinking_enabled' ? 'تفکر' : 'جستجو'} با موفقیت بروز شد`, 'success');
+            } catch (e) {
+                showToast(`خطا در بروزرسانی: ${e.message}`, 'error');
+                // برگرداندن toggle به حالت قبلی
+                loadSessions();
+            }
+        }
+
+        async function deleteSession(sessionId) {
+            if (!confirm(`آیا از حذف جلسه "${sessionId.substring(0, 20)}..." اطمینان دارید؟`)) return;
+            try {
+                const res = await fetch(`/v1/sessions/${sessionId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                showToast('جلسه با موفقیت حذف شد', 'success');
+                loadSessions();
+            } catch (e) {
+                showToast('خطا در حذف جلسه: ' + e.message, 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', loadSessions);
+    </script>
+</body>
+</html>
