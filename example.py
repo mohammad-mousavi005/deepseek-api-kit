@@ -1,62 +1,110 @@
 import requests
 import json
 
-BASE_URL = "http://127.0.0.1:8000/v1/chat/completions"
+# 1. غیراستریم بدون نمایش thinking (بدون تفکر)
+print("1. غیراستریم - بدون تفکر")
+response = requests.post(
+    "http://127.0.0.1:8000/v1/chat/completions",
+    json={
+        "messages": [{"content": "خوبی؟"}],
+        "stream": False,
+        "session_id": "my_session_1"
+    }
+)
+data = response.json()
+try:
+    print(f"[JSON]:{data}")
+except:
+    print(f"[پاسخ]: {data['content']}")
+    print()
 
-HEADERS = {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer dummy-key"
-}
+# 2. غیراستریم با نمایش thinking (تفکر فعال)
+print("2. غیراستریم - با تفکر فعال")
+response = requests.post(
+    "http://127.0.0.1:8000/v1/chat/completions",
+    json={
+        "messages": [{"content": "سلام، چطوری؟"}],
+        "stream": False,
+        "session_id": "my_session_2"
+    }
+)
+data = response.json()
+if "reasoning_content" in data:
+    print(f"[تفکر]: {data['reasoning_content']}")
+if "content" in data:
+    print(f"[پاسخ]: {data['content']}")
+print()
 
-MODELS = {
-    "thinking_not_search": True,
-    "thinking_search": True,
-    "not_thinking_not_search": True,
-    "not_thinking_search": True
-}
+# 3. استریم بدون نمایش reasoning_content (بدون تفکر)
+print("3. استریم - بدون تفکر")
+with requests.post(
+    "http://127.0.0.1:8000/v1/chat/completions",
+    json={"messages": [{"content": "سلام"}], "stream": True, "session_id": "my_session_3"},
+    stream=True
+) as r:
+    for line in r.iter_lines():
+        if line:
+            line = line.decode("utf-8")
+            if line.startswith("data: ") and not line.endswith("[DONE]"):
+                chunk = json.loads(line[6:])
+                if "content" in chunk:
+                    print(chunk["content"], end="", flush=True)
+    print("\n")
 
-TEST_STREAMING = {
-    "stream": False,
-    "non_stream": True,
-}
+# 4. استریم با نمایش reasoning_content (تفکر فعال)
+print("4. استریم - با تفکر فعال")
+thinking_header_printed = False
+response_header_printed = False
+with requests.post(
+    "http://127.0.0.1:8000/v1/chat/completions",
+    json={"messages": [{"content": "من کیم؟"}], "stream": True, "session_id": "my_session_4"},
+    stream=True
+) as r:
+    for line in r.iter_lines():
+        if line:
+            line = line.decode("utf-8")
+            if line.startswith("data: ") and not line.endswith("[DONE]"):
+                chunk = json.loads(line[6:])
+                if "reasoning_content" in chunk:
+                    if not thinking_header_printed:
+                        print("[تفکر]: ")
+                        thinking_header_printed = True
+                    print(chunk['reasoning_content'], end="", flush=True)
+                if "content" in chunk:
+                    if not response_header_printed:
+                        print("\n[پاسخ]: ")
+                        response_header_printed = True
+                    print(chunk["content"], end="", flush=True)
 
-PAYLOAD_TEMPLATE = {
-    "messages": [
-        {"role": "user", "content": "Explain quantum computing in simple terms."}
-    ],
-    "temperature": 0.7
-}
+# 5. استفاده از Tool (Tool Calling / Function Calling)
+print("\n\n5. استفاده از Tool / Function Calling")
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "دریافت وضعیت آب و هوای یک شهر",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "نام شهر مانند تهران، شیراز، پاریس"},
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
 
-def run_request(model_id, stream: bool):
-    payload = dict(PAYLOAD_TEMPLATE)
-    payload["model"] = model_id
-    payload["stream"] = stream
-
-    print(f"\n=== Running model={model_id} stream={stream} ===")
-
-    if stream:
-        with requests.post(BASE_URL, headers=HEADERS, json=payload, stream=True) as r:
-            for chunk in r.iter_lines():
-                if chunk:
-                    decoded = chunk.decode("utf-8")
-                    print(decoded)
-    else:
-        r = requests.post(BASE_URL, headers=HEADERS, json=payload)
-        try:
-            print(json.dumps(r.json(), indent=2))
-        except Exception:
-            print(r.text)
-
-def main():
-    for model_id, enabled in MODELS.items():
-        if not enabled:
-            continue
-
-        if TEST_STREAMING["non_stream"]:
-            run_request(model_id, stream=False)
-
-        if TEST_STREAMING["stream"]:
-            run_request(model_id, stream=True)
-
-if __name__ == "__main__":
-    main()
+response = requests.post(
+    "http://127.0.0.1:8000/v1/chat/completions",
+    json={
+        "model": "not_thinking_not_search",
+        "messages": [{"role": "user", "content": "آب و هوای تهران چطوره؟"}],
+        "tools": tools,
+        "stream": False
+    }
+)
+data = response.json()
+print("[پاسخ API شامل Tool Call]:")
+print(json.dumps(data, indent=2, ensure_ascii=False))
