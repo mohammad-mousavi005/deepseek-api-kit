@@ -18,9 +18,7 @@ deepseek-tools/
 │   └── main.py             # برنامهٔ اول: پروکسی سازگار با OpenAI
 ├── deepseek_chat/
 │   ├── __init__.py
-│   ├── main.py             # برنامهٔ دوم: سرور چت با مدیریت نشست
-│   ├── session_store.py    # مدیریت ذخیره و بازیابی نشست‌ها
-│   └── panel.html          # پنل مدیریت نشست‌ها (در مرورگر باز شود)
+│   └── main.py             # برنامهٔ دوم: سرور چت با مدیریت نشست
 ├── example.py              # نمونه کد استفاده از API
 ├── requirements.txt
 └── README.md
@@ -40,11 +38,12 @@ deepseek-tools/
 ### 🔸 برنامهٔ اول: OpenAI Proxy
 
 - **🔄 سازگاری کامل با OpenAI API**: به‌عنوان یک دراپ‌این جایگزین برای کلاینت‌های سازگار با OpenAI (کتابخانه‌ها، افزونه‌ها و اپلیکیشن‌ها)
+- **🛠️ پشتیبانی از Tool / Function Calling**: امکان تعریف توابع (`tools`) در درخواست‌های OpenAI و دریافت پاسخ فراخوانی ابزار (`tool_calls`)
 
 ### 🔹 برنامهٔ دوم: DeepSeek Chat
 
 - **💾 مدیریت نشست سرور-ساید**: ذخیره و بازیابی نشست‌ها به‌صورت پایدار در فایل JSON
-- **🖥️ پنل مدیریت**: پنل HTML تحت وب برای مشاهده، حذف و تغییر تنظیمات نشست‌ها (Thinking/Search)
+- **🖥️ session settings**: مشاهده، حذف و تغییر تنظیمات نشست‌ها (Thinking/Search)
 - **🌐 CORS فعال**: امکان اتصال از دامنه‌ها و پورت‌های مختلف
 
 ---
@@ -56,8 +55,8 @@ deepseek-tools/
 | سازگاری با OpenAI API | ✅ کامل | ❌ |
 | مدیریت نشست | توسط کلاینت | سرور-ساید (پایدار در JSON) |
 | پنل مدیریت | ❌ | ✅ (فایل HTML جداگانه) |
-| کنترل Thinking | با انتخاب مدل | داینامیک از پنل |
-| کنترل Search | با انتخاب مدل | داینامیک از پنل |
+| کنترل Thinking | با انتخاب مدل | داینامیک از طریق 127.0.0.1:8000/docs |
+| کنترل Search | 1با انتخاب مدل | داینامیک از طریق 27.0.0.1:8000/docs |
 | CORS | ❌ | ✅ |
 | اجرا | `uvicorn openai_proxy.main:app` | `uvicorn deepseek_chat.main:app` |
 
@@ -213,6 +212,41 @@ curl -X POST http://localhost:8000/v1/chat/completions \
   }'
 ```
 
+### مثال استفاده از Tool / Function Calling در پایتون
+
+```python
+import openai
+
+openai.api_base = "http://127.0.0.1:8000/v1"
+openai.api_key = "doesnt-matter"
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_current_weather",
+            "description": "دریافت وضعیت آب و هوای شهر",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "نام شهر"}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = openai.ChatCompletion.create(
+    model="not_thinking_not_search",
+    messages=[{"role": "user", "content": "آب و هوای شیراز چطوره؟"}],
+    tools=tools
+)
+
+tool_calls = response.choices[0].message.get("tool_calls")
+print("Tool Calls:", tool_calls)
+```
+
 ---
 
 ## 🚀 برنامهٔ دوم: DeepSeek Chat
@@ -223,7 +257,7 @@ uvicorn deepseek_chat.main:app --host 127.0.0.1 --port 8000
 
 ### پنل مدیریت نشست‌ها
 
-پس از اجرا، مرورگر را باز کنید و به آدرس [http://127.0.0.1:8000](http://127.0.0.1:8000) بروید. از طریق پنل می‌توانید:
+پس از اجرا، مرورگر را باز کنید و به آدرس [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) بروید. از طریق مرورگر می‌توانید:
 
 - لیست نشست‌ها را ببینید
 - هر نشست را حذف کنید
@@ -247,7 +281,7 @@ curl -X POST http://localhost:8000/v1/chat/completions \
 | `messages` | `array` | آرایهٔ پیام‌ها (فقط آخرین پیام کاربر ارسال می‌شود) |
 | `stream` | `boolean` (اختیاری) | حالت استریم (پیش‌فرض `false`) |
 
-> مدیریت تنظیمات Thinking/Search، لیست و حذف نشست‌ها از طریق پنل HTML انجام می‌شود.
+> مدیریت تنظیمات Thinking/Search، لیست و حذف نشست‌ها از طریق sawgger ui انجام می‌شود.
 
 ---
 
