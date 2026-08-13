@@ -82,19 +82,35 @@ deepseek-tools/
 
 ---
 
-## 📦 نصب
+## 📦 نصب و اجرا
 
 ۱. مخزن را کلون کنید:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/deepseek-tools.git
-cd deepseek-tools
+git clone https://github.com/xSOH3ILx/deepseek-api-kit.git
+cd deepseek-api-kit
 ```
 
-۲. وابستگی‌ها را نصب کنید:
+۲. اجرای اسکریپت آماده (توصیه‌شده):
 
 ```bash
+./run.sh
+```
+
+این اسکریپت به‌طور خودکار:
+- محیط مجازی (`.venv`) می‌سازد (اگر وجود نداشته باشد)
+- وابستگی‌ها را نصب می‌کند
+- فایل `.env` را از روی `.env.example` می‌سازد (اگر وجود نداشته باشد)
+- سرور OpenAI Proxy را روی `http://127.0.0.1:8000` اجرا می‌کند
+
+۳. یا به‌صورت دستی:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env   # و کلید API را در آن قرار دهید
+uvicorn openai_proxy.main:app --host 127.0.0.1 --port 8000
 ```
 
 ---
